@@ -1,0 +1,50 @@
+#include<opencv2\imgproc\imgproc.hpp>
+#include<opencv2\highgui\highgui.hpp>
+#include<iostream>
+
+using namespace std;
+using namespace cv;
+
+int x_1 = 0;
+int x_2 = 0;
+int y_1 = 0;
+int y_2 = 0;
+
+void closing(Mat i, Mat k)
+{
+	dilate(i, i, k);
+	erode(i, i, k);
+
+}
+
+void multiErode(Mat img, Mat k, int n)
+{
+	for (int i = 0; i < n; i++)
+	{
+		erode(img, img, k);
+	}
+}
+
+void multiDilate(Mat img, Mat k, int n)
+{
+	for (int i = 0; i < n; i++)
+	{
+		dilate(img, img, k);
+	}
+}
+
+int main(int argc, char* argv)
+{
+	Mat image = imread("cs8w.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+	int iterate = 2;
+	double dist = 0;
+	closing(image, kernel);
+	multiErode(image, kernel, iterate);
+	medianBlur(image, image, 11);
+	multiDilate(image, kernel, iterate);
+	threshold(image, image, 50, 255, THRESH_TRIANGLE);
+	image.release();
+	kernel.release();
+	return 0;
+}
