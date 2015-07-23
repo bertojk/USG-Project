@@ -33,6 +33,19 @@ void multiDilate(Mat img, Mat k, int n)
 	}
 }
 
+void getFetusImage(Mat image, Point p)
+{
+	floodFill(image, p, Scalar(125));
+	for (int i = 0; i < image.rows; i++)
+	{
+		for (int j = 0; j < image.cols; j++)
+		{
+			if (image.at<uchar>(Point(j, i)) != 125) image.at<uchar>(Point(j, i)) = 0;;
+		}
+	}
+
+}
+
 int main(int argc, char* argv)
 {
 	Mat image = imread("cs8w.jpg", CV_LOAD_IMAGE_GRAYSCALE);
@@ -44,6 +57,7 @@ int main(int argc, char* argv)
 	medianBlur(image, image, 11);
 	multiDilate(image, kernel, iterate);
 	threshold(image, image, 50, 255, THRESH_TRIANGLE);
+	getFetusImage(image, Point(170,170));
 	image.release();
 	kernel.release();
 	return 0;
