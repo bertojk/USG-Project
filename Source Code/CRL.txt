@@ -83,6 +83,11 @@ void getLinePoint(Mat image)
 	}
 }
 
+double getLength(double val)
+{
+	return val * 2.54 / 96;
+}
+
 
 int main(int argc, char* argv)
 {
@@ -98,6 +103,16 @@ int main(int argc, char* argv)
 	threshold(image, image, 50, 255, THRESH_TRIANGLE);
 	getFetusImage(image, Point(170,170));
 	getLinePoint(image);
+	cvLine(image_src, Point(x_1, y_1), Point(x_2, y_2), Scalar(0, 255, 0), 4, 8);
+	namedWindow("hasil", WINDOW_AUTOSIZE);
+	cvShowImage("hasil", image_src);
+	int dx = x_1 - x_2;
+	int dy = y_1 - y_2;
+	dist = dx*dx + dy*dy;
+	cout << "dist^2 = " << dist << endl;
+	cout << "Length of fetus : " << getLength(sqrt(dist)) << " cm."<< endl;
+	cout << "Coordinate 1 : " << x_1 << " " << y_1 << endl;
+	cout << "Coordinate 2 : " << x_2 << " " << y_2 << endl;
 	waitKey(0);
 	image.release();
 	kernel.release();
