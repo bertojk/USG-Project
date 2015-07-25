@@ -46,8 +46,47 @@ void getFetusImage(Mat image, Point p)
 
 }
 
+void getLinePoint(Mat image)
+{
+	double d = 0;
+	double d_max = 0;
+	int dx = 0;
+	int dy = 0;
+	for (int i = 0; i < image.rows; i++)
+	{
+		for (int j = 0; j < image.cols; j++)
+		{
+			for (int k = 0; k < image.rows; k++)
+			{
+				for (int l = 0; l < image.cols; l++)
+				{
+					if (i*image.rows + j > k*image.rows + l)
+					{
+						if (image.at<uchar>(Point(j, i)) == 125 && image.at<uchar>(Point(l, k)) == 125)
+						{
+							dx = abs(j - l);
+							dy = abs(i - k);
+							d = sqrt(dx*dx + dy*dy);
+							if (d > d_max)
+							{
+								d_max = d;
+								x_1 = l;
+								y_1 = k;
+								x_2 = j;
+								y_2 = i;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
 int main(int argc, char* argv)
 {
+	IplImage* image_src = cvLoadImage("cs8w.jpg", CV_LOAD_IMAGE_UNCHANGED);
 	Mat image = imread("cs8w.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 	Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
 	int iterate = 2;
@@ -58,7 +97,11 @@ int main(int argc, char* argv)
 	multiDilate(image, kernel, iterate);
 	threshold(image, image, 50, 255, THRESH_TRIANGLE);
 	getFetusImage(image, Point(170,170));
+	getLinePoint(image);
+	waitKey(0);
 	image.release();
 	kernel.release();
+	cvReleaseImage(&image_src);
+	cvDestroyWindow("hasil");
 	return 0;
 }
