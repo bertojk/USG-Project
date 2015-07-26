@@ -5,10 +5,8 @@
 using namespace std;
 using namespace cv;
 
-int x_1 = 0;
-int x_2 = 0;
-int y_1 = 0;
-int y_2 = 0;
+Point point1 = Point(0, 0);
+Point point2 = Point(0, 0);
 
 void closing(Mat i, Mat k)
 {
@@ -48,36 +46,29 @@ void getFetusImage(Mat image, Point p)
 
 void getLinePoint(Mat image)
 {
-	double d = 0;
-	double d_max = 0;
-	int dx = 0;
-	int dy = 0;
+	vector<Point> dots;
+
 	for (int i = 0; i < image.rows; i++)
 	{
 		for (int j = 0; j < image.cols; j++)
 		{
-			for (int k = 0; k < image.rows; k++)
+
+			if (image.at<uchar>(Point(j, i)) == 125)
 			{
-				for (int l = 0; l < image.cols; l++)
-				{
-					if (i*image.rows + j > k*image.rows + l)
-					{
-						if (image.at<uchar>(Point(j, i)) == 125 && image.at<uchar>(Point(l, k)) == 125)
-						{
-							dx = abs(j - l);
-							dy = abs(i - k);
-							d = sqrt(dx*dx + dy*dy);
-							if (d > d_max)
-							{
-								d_max = d;
-								x_1 = l;
-								y_1 = k;
-								x_2 = j;
-								y_2 = i;
-							}
-						}
-					}
-				}
+				dots.push_back(Point(j, i));
+			}
+		}
+	}
+	double maxDist = 0;
+	for (int i = 0; i < dots.size(); i++)
+	{
+		for (int j = i + 1; j < dots.size(); j++)
+		{
+			if (maxDist < norm(dots.at(i) - dots.at(j)))
+			{
+				maxDist = norm(dots.at(i) - dots.at(j));
+				point1 = dots.at(i);
+				point2 = dots.at(j);
 			}
 		}
 	}
@@ -85,9 +76,70 @@ void getLinePoint(Mat image)
 
 double getLength(double val)
 {
-	return val * 2.54 / 96;
+	return val * 25.4 / 96;
 }
 
+double tableGA(double l, int m)
+{
+	double k = roundf(l * 10) / 10;
+	int idx = k*10-10;
+	double age[3][57] = 
+	{
+		{7.5, 7.6, 8.0, 8.1, 8.1, 8.2, 8.3, 8.4, 8.5, 8.5, 
+		 8.6, 9.0, 9.1, 9.1, 9.2, 9.3, 9.4, 9.4, 9.5, 9.6,
+		 9.6, 10.0, 10.1, 10.2, 10.2, 10.3, 10.4, 10.4, 10.5, 10.6,
+		 10.6, 11.0, 11.1, 11.1, 11.2, 11.3, 11.3, 11.4, 11.5 ,11.5,
+		 11.6, 12.0, 12.0, 12.1, 12.1, 12.2, 12.3, 12.3, 12.4, 12.4, 
+		 12.5, 12.6, 12.6, 13.0, 13.0, 13.1, 13.2
+		},
+
+		{7.0, 7.1, 7.3, 7.4, 7.5, 7.6, 8.0, 8.1, 8.2, 8.3,
+		8.4, 8.5, 8.6, 8.6, 9.0, 9.1, 9.2, 9.3, 9.3, 9.4,
+		9.5, 9.6, 9.6, 10.0, 10.1, 10.1, 10.2, 10.3, 10.3, 10.4,
+		10.5, 10.5, 10.6, 11.0, 11.0, 11.1, 11.1, 11.2, 11.3, 11.3,
+		11.4, 11.4, 11.5, 11.5, 11.6, 11.6, 12.0, 12.1, 12.1, 12.2,
+		12.2, 12.3, 12.3, 12.4, 12.4, 12.5, 12.5
+		 },
+		{6.6, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 8.0, 8.1, 8.2,
+		 8.3, 8.4, 8.5, 8.6, 9.0, 9.1, 9.2, 9.3, 9.3, 9.4,
+		 9.5, 9.6, 10.0, 10.0, 10.1, 10.2, 10.3, 10.3, 10.4, 10.5,
+		 10.5, 10.6, 11.0, 11.0, 11.1, 11.2, 11.2, 11.3, 11.4, 11.4,
+		 11.5, 11.5, 11.6, 12.0, 12.0, 12.1, 12.2, 12.2, 12.3, 12.3,
+		 12.4, 12.5, 125, 12.6, 12.6, 13.0, 13.0
+		 }
+	};
+
+	return age[m][idx];
+}
+
+int fetalWeight(int ga)
+{
+	switch (ga)
+	{
+	case 7:
+		return 1;
+		break;
+	case 8:
+		return 1;
+		break;
+	case 9:
+		return 2;
+		break;
+	case 10:
+		return 4;
+		break;
+	case 11:
+		return 7;
+		break;
+	case 12:
+		return 14;
+		break;
+	case 13:
+		return 23;
+		break;
+
+	}
+}
 
 int main(int argc, char* argv)
 {
@@ -95,28 +147,29 @@ int main(int argc, char* argv)
 	Mat image = imread("cs8w.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 	Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
 	int iterate = 2;
-	double dist = 0;
 	closing(image, kernel);
 	multiErode(image, kernel, iterate);
 	medianBlur(image, image, 11);
 	multiDilate(image, kernel, iterate);
 	threshold(image, image, 50, 255, THRESH_TRIANGLE);
-	getFetusImage(image, Point(170,170));
+	getFetusImage(image, Point(170, 170));
+	Mat fetus_temp = image.clone();
+	erode(fetus_temp, fetus_temp, kernel);
+	subtract(image, fetus_temp, image);
 	getLinePoint(image);
-	cvLine(image_src, Point(x_1, y_1), Point(x_2, y_2), Scalar(0, 255, 0), 4, 8);
-	namedWindow("hasil", WINDOW_AUTOSIZE);
-	cvShowImage("hasil", image_src);
-	int dx = x_1 - x_2;
-	int dy = y_1 - y_2;
-	dist = dx*dx + dy*dy;
-	cout << "dist^2 = " << dist << endl;
-	cout << "Length of fetus : " << getLength(sqrt(dist)) << " cm."<< endl;
-	cout << "Coordinate 1 : " << x_1 << " " << y_1 << endl;
-	cout << "Coordinate 2 : " << x_2 << " " << y_2 << endl;
+	cvLine(image_src, point1, point2, Scalar(0, 255, 0), 4, 8);
+	namedWindow("result", WINDOW_AUTOSIZE);
+	cvShowImage("result", image_src);
+	double dist = norm(point1 - point2);
+	double length = getLength(sqrt(dist));
+	int ga_mac = tableGA(length, 1) * 10;
+	cout << "Length of fetus : " << length << " cm." << endl;
+	cout << "Gestational age : " << ga_mac/10  << " week(s) " << ga_mac%10 << " day(s)." << endl;
+	cout << "Fetal weight : " << fetalWeight(ga_mac / 10) << " grams." << endl;
 	waitKey(0);
 	image.release();
 	kernel.release();
 	cvReleaseImage(&image_src);
-	cvDestroyWindow("hasil");
+	cvDestroyWindow("result");
 	return 0;
 }
