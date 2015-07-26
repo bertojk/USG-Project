@@ -1,0 +1,168 @@
+#include<opencv2\imgproc\imgproc.hpp>
+#include<opencv2\highgui\highgui.hpp>
+#include<iostream>
+
+using namespace std;
+using namespace cv;
+
+Point point1 = Point(0, 0);
+Point point2 = Point(0, 0);
+
+void closing(Mat i, Mat k)
+{
+	dilate(i, i, k);
+	erode(i, i, k);
+
+}
+
+void multiErode(Mat img, Mat k, int n)
+{
+	for (int i = 0; i < n; i++)
+	{
+		erode(img, img, k);
+	}
+}
+
+void multiDilate(Mat img, Mat k, int n)
+{
+	for (int i = 0; i < n; i++)
+	{
+		dilate(img, img, k);
+	}
+}
+
+void getObjectImage(Mat image, Point p)
+{
+	floodFill(image, p, Scalar(125));
+	for (int i = 0; i < image.rows; i++)
+	{
+		for (int j = 0; j < image.cols; j++)
+		{
+			if (image.at<uchar>(Point(j, i)) != 125) image.at<uchar>(Point(j, i)) = 0;;
+		}
+	}
+
+}
+
+void getLinePoint(Mat image)
+{
+	vector<Point> dots;
+
+	for (int i = 0; i < image.rows; i++)
+	{
+		for (int j = 0; j < image.cols; j++)
+		{
+
+			if (image.at<uchar>(Point(j, i)) == 125)
+			{
+				dots.push_back(Point(j, i));
+			}
+		}
+	}
+	double maxDist = 0;
+	for (int i = 0; i < dots.size(); i++)
+	{
+		for (int j = i + 1; j < dots.size(); j++)
+		{
+			if (maxDist < norm(dots.at(i) - dots.at(j)))
+			{
+				maxDist = norm(dots.at(i) - dots.at(j));
+				point1 = dots.at(i);
+				point2 = dots.at(j);
+			}
+		}
+
+	}
+}
+
+double getLength(double val)
+{
+	return val * 25.4 / 96;
+}
+
+
+double tableGS(int sac)
+{
+	double gs[40] =
+	{
+		5.0, 5.2, 5.3, 5.5, 5.6, 5.8, 5.9, 6.0, 6.2, 6.3,
+		6.5, 6.6, 6.8, 6.9, 7.0, 7.2, 7.3, 7.5, 7.6, 7.8,
+		7.9, 8.0, 8.2, 8.3, 8.5, 8.6, 8.8, 8.9, 9.0, 9.2,
+		9.3, 9.5, 9.6, 9.8, 9.9, 10.0, 10.2, 10.3, 10.5, 10.6
+	};
+	return gs[sac - 10];
+}
+
+int fetalWeight(int ga)
+{
+	switch (ga)
+	{
+	case 7:
+		return 1;
+		break;
+	case 8:
+		return 1;
+		break;
+	case 9:
+		return 2;
+		break;
+	case 10:
+		return 4;
+		break;
+	case 11:
+		return 7;
+		break;
+	case 12:
+		return 14;
+		break;
+	case 13:
+		return 23;
+		break;
+
+	}
+}
+
+
+int main(int argc, char* argv)
+{
+	IplImage* image_src = cvLoadImage("cs8w.jpg", CV_LOAD_IMAGE_UNCHANGED);
+	Mat image = imread("cs8w.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	imshow("ori", image);
+	Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+	int iterate = 2;
+	Mat image_temp = image.clone();
+	threshold(image_temp, image_temp, 60, 255, THRESH_BINARY);
+	medianBlur(image_temp, image_temp, 7);
+	closing(image, kernel);
+	multiErode(image, kernel, iterate);
+	medianBlur(image, image, 11);
+	multiDilate(image, kernel, iterate);
+	Mat fetusnormal = image.clone();
+	threshold(fetusnormal, fetusnormal, 50, 255, THRESH_TRIANGLE);
+	getObjectImage(fetusnormal, Point(170, 170));
+	multiDilate(fetusnormal, kernel, 13);
+	floodFill(fetusnormal, Point(170, 170), Scalar(255));
+	subtract(image_temp, fetusnormal, image_temp);
+	multiDilate(image_temp, kernel, 15);
+	multiErode(image_temp, kernel, 15);
+	getObjectImage(image_temp, Point(170, 170));
+	Mat ketuban = image_temp.clone();
+	erode(image_temp, image_temp, kernel);
+	subtract(ketuban, image_temp, ketuban);
+	imshow("ketuban", ketuban);
+	getLinePoint(ketuban);
+	cvLine(image_src, point1, point2, Scalar(0, 255, 0), 4, 8);
+	namedWindow("hasil", WINDOW_AUTOSIZE);
+	cvShowImage("hasil", image_src);
+	double dist = norm(point1 - point2);
+	double length = roundf(getLength(sqrt(dist))) * 1000 / 100;
+	cout << "Diameter of sac : " << length << " mm." << endl;
+	cout << "Gestational Age : " << tableGS(length) << " weeks." << endl;
+	cout << "Fetal Weight : " << fetalWeight(roundf(tableGS(length)) * 10 / 10) << " grams." << endl;
+	waitKey(0);
+	image.release();
+	kernel.release();
+	cvReleaseImage(&image_src);
+	cvDestroyWindow("hasil");
+	return 0;
+}
