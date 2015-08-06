@@ -41,6 +41,7 @@ void getObjectImage(Mat image, Point p)
 			if (image.at<uchar>(Point(j, i)) != 125) image.at<uchar>(Point(j, i)) = 0;;
 		}
 	}
+	floodFill(image, p, Scalar(255));
 
 }
 
@@ -53,7 +54,7 @@ void getLinePoint(Mat image)
 		for (int j = 0; j < image.cols; j++)
 		{
 
-			if (image.at<uchar>(Point(j, i)) == 125)
+			if (image.at<uchar>(Point(j, i)) == 255)
 			{
 				dots.push_back(Point(j, i));
 			}
@@ -73,6 +74,13 @@ void getLinePoint(Mat image)
 		}
 
 	}
+}
+
+void getEdge(Mat image, Mat k)
+{
+	Mat temp = image.clone();
+	erode(image, temp, k);
+	subtract(image, temp, image);
 }
 
 double getLength(double val)
@@ -127,33 +135,30 @@ int main(int argc, char* argv)
 {
 	IplImage* image_src = cvLoadImage("cs8w.jpg", CV_LOAD_IMAGE_UNCHANGED);
 	Mat image = imread("cs8w.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-	imshow("ori", image);
+	imshow("ORIGINAL IMAGE", image);
 	Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
 	int iterate = 2;
-	Mat image_temp = image.clone();
-	threshold(image_temp, image_temp, 60, 255, THRESH_BINARY);
-	medianBlur(image_temp, image_temp, 7);
-	closing(image, kernel);
-	multiErode(image, kernel, iterate);
-	medianBlur(image, image, 11);
-	multiDilate(image, kernel, iterate);
-	Mat fetusnormal = image.clone();
-	threshold(fetusnormal, fetusnormal, 50, 255, THRESH_TRIANGLE);
-	getObjectImage(fetusnormal, Point(170, 170));
-	multiDilate(fetusnormal, kernel, 13);
-	floodFill(fetusnormal, Point(170, 170), Scalar(255));
-	subtract(image_temp, fetusnormal, image_temp);
-	multiDilate(image_temp, kernel, 15);
-	multiErode(image_temp, kernel, 15);
-	getObjectImage(image_temp, Point(170, 170));
-	Mat ketuban = image_temp.clone();
-	erode(image_temp, image_temp, kernel);
-	subtract(ketuban, image_temp, ketuban);
-	imshow("ketuban", ketuban);
-	getLinePoint(ketuban);
+	Mat fetus = image.clone();
+	closing(fetus, kernel);
+	multiErode(fetus, kernel, iterate);
+	medianBlur(fetus, fetus, 11);
+	multiDilate(fetus, kernel, iterate);
+	threshold(fetus, fetus, 50, 255, THRESH_TRIANGLE);
+	getObjectImage(fetus, Point(170, 170));
+	multiDilate(fetus, kernel, 13);
+	Mat amniotic = image.clone();
+	int step = 0;
+	threshold(amniotic, amniotic, 60, 255, THRESH_BINARY);
+	medianBlur(amniotic, amniotic, 7);
+	subtract(amniotic, fetus, amniotic);
+	multiDilate(amniotic, kernel, 15);
+	multiErode(amniotic, kernel, 15);
+	getObjectImage(amniotic, Point(170, 170));
+	getEdge(amniotic, kernel);
+	getLinePoint(amniotic);
 	cvLine(image_src, point1, point2, Scalar(0, 255, 0), 4, 8);
-	namedWindow("hasil", WINDOW_AUTOSIZE);
-	cvShowImage("hasil", image_src);
+	namedWindow("RESULT IMAGE", WINDOW_AUTOSIZE);
+	cvShowImage("RESULT IMAGE", image_src);
 	double dist = norm(point1 - point2);
 	double length = roundf(getLength(sqrt(dist))) * 1000 / 100;
 	cout << "Diameter of sac : " << length << " mm." << endl;
@@ -163,6 +168,6 @@ int main(int argc, char* argv)
 	image.release();
 	kernel.release();
 	cvReleaseImage(&image_src);
-	cvDestroyWindow("hasil");
+	cvDestroyWindow("RESULT IMAGE");
 	return 0;
 }
